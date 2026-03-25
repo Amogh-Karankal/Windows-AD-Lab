@@ -148,14 +148,13 @@ This demonstrates applying different policies to different organizational units.
 
 | Screenshot | Description |
 |------------|-------------|
-| [AD Users and Computers](screenshots/01-ad-users-computers.png) | Full AD structure |
-| [OU Structure](screenshots/02-ou-structure.png) | Organizational Units |
-| [User Accounts](screenshots/03-users.png) | Created users |
-| [Security Groups](screenshots/04-groups.png) | Security groups |
-| [Group Membership](screenshots/05-group-members.png) | Users in groups |
-| [GPO Console](screenshots/06-gpo-management.png) | Group Policy Management |
-| [Password Policy](screenshots/07-password-policy.png) | Password GPO settings |
-| [Control Panel GPO](screenshots/08-control-panel-gpo.png) | Restriction GPO |
+| [OU Structure](screenshots/01-OU.png) | Organizational Units |
+| [User Accounts](screenshots/02-IT-users.png) | Created users |
+| [Security Groups](screenshots/03-Groups.png) | Security groups |
+| [Group Membership](screenshots/04-IT-admins-members.png) | Users in groups |
+| [GPO Console](screenshots/05-GPO-.png) | Group Policy Management |
+| [Password Policy](screenshots/06-Password-GPO.png) | Password GPO settings |
+| [Control Panel GPO](screenshots/07-linkedGPO-HR.png) | Restriction GPO |
 
 ## 🛠️ Technologies Used
 
