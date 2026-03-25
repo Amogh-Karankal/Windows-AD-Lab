@@ -152,7 +152,7 @@ This demonstrates applying different policies to different organizational units.
 | [User Accounts](screenshots/02-IT-users.png) | Created users |
 | [Security Groups](screenshots/03-Groups.png) | Security groups |
 | [Group Membership](screenshots/04-IT-admins-members.png) | Users in groups |
-| [GPO Console](screenshots/05-GPO-.png) | Group Policy Management |
+| [GPO Console](screenshots/05-GPO.png) | Group Policy Management |
 | [Password Policy](screenshots/06-Password-GPO.png) | Password GPO settings |
 | [Control Panel GPO](screenshots/07-linkedGPO-HR.png) | Restriction GPO |
 
