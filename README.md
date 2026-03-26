@@ -1,14 +1,15 @@
 # Windows Server Active Directory Lab
 
-Hands-on Active Directory Domain Services (AD DS) lab built on Windows Server 2022, demonstrating enterprise identity management, organizational structure, and Group Policy administration.
+Hands-on Active Directory Domain Services (AD DS) lab built on Windows Server 2022, demonstrating enterprise identity management, organizational structure, Group Policy administration, and PowerShell automation.
 
 ![Windows Server](https://img.shields.io/badge/Windows%20Server-2022-blue?logo=windows)
 ![Active Directory](https://img.shields.io/badge/Active%20Directory-Domain%20Services-green)
+![PowerShell](https://img.shields.io/badge/PowerShell-Automation-blue?logo=powershell)
 ![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-Free%20Tier-red)
 
 ## 🎯 Overview
 
-This project demonstrates core Active Directory administration skills including domain controller deployment, organizational unit design, user/group management, and Group Policy implementation.
+This project demonstrates core Active Directory administration skills including domain controller deployment, organizational unit design, user/group management, Group Policy implementation, and PowerShell automation for common IT tasks.
 
 ### Skills Demonstrated
 
@@ -18,7 +19,9 @@ This project demonstrates core Active Directory administration skills including 
 - Organizational Unit (OU) structure design
 - User account provisioning and management
 - Security group creation and membership management
-- Group Policy Object (GPO) creation and linking
+- Group Policy Objects (GPOs) for security enforcement
+- PowerShell scripting for AD automation
+- OU delegation for least-privilege administration
 - DNS Server configuration (integrated with AD)
 
 ## 🏗️ Architecture
@@ -102,7 +105,31 @@ amoghlab.local (Domain)
 
 **Path:** Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Password Policy
 
-### 2. Restrict Control Panel (HR Department)
+### 2. Account Lockout Policy (Domain-Wide)
+
+**Linked to:** amoghlab.local (entire domain)
+
+| Setting | Value |
+|---------|-------|
+| Account lockout threshold | 5 invalid attempts |
+| Account lockout duration | 30 minutes |
+| Reset lockout counter after | 30 minutes |
+
+**Path:** Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Account Lockout Policy
+
+### 3. Audit Policy (Domain-Wide)
+
+**Linked to:** amoghlab.local (entire domain)
+
+| Setting | Value |
+|---------|-------|
+| Audit Logon | Success and Failure |
+| Audit Logoff | Success |
+| Audit Account Lockout | Success and Failure |
+
+**Path:** Computer Configuration → Policies → Windows Settings → Security Settings → Advanced Audit Policy Configuration → Logon/Logoff
+
+### 4. Restrict Control Panel (HR Department)
 
 **Linked to:** HR OU only
 
@@ -112,7 +139,27 @@ amoghlab.local (Domain)
 
 **Path:** User Configuration → Policies → Administrative Templates → Control Panel
 
-This demonstrates applying different policies to different organizational units.
+### 5. Block USB Storage (Finance Department)
+
+**Linked to:** Finance OU only
+
+| Setting | Value |
+|---------|-------|
+| All Removable Storage classes: Deny all access | Enabled |
+
+**Path:** Computer Configuration → Policies → Administrative Templates → System → Removable Storage Access
+
+This demonstrates defense-in-depth: domain-wide security baselines plus targeted restrictions for sensitive departments.
+
+## 🔐 OU Delegation
+
+Implemented least-privilege administration:
+
+| OU | Delegated To | Permission |
+|----|--------------|------------|
+| IT | HR_Staff | Reset user passwords |
+
+This allows helpdesk staff to reset passwords without full admin rights — a real-world security best practice.
 
 ## 🚀 Deployment Steps
 
@@ -139,22 +186,71 @@ This demonstrates applying different policies to different organizational units.
 
 ### Phase 4: Group Policy
 
-1. Created Password Policy GPO
-2. Linked Password Policy to domain
-3. Created Restrict Control Panel GPO
-4. Linked restriction to HR OU only
+1. Created Password Policy GPO (domain-wide)
+2. Created Account Lockout Policy GPO (domain-wide)
+3. Created Audit Policy GPO (domain-wide)
+4. Created Restrict Control Panel GPO (HR OU)
+5. Created Block USB Storage GPO (Finance OU)
+
+### Phase 5: Delegation & Automation
+
+1. Delegated password reset to HR_Staff for IT OU
+2. Created PowerShell scripts for AD automation
+
+## 💻 PowerShell Automation Scripts
+
+### Create-NewUser.ps1
+
+Automates user provisioning with department-based OU placement.
+
+```powershell
+.\Create-NewUser.ps1 -FirstName "John" -LastName "Doe" -Department "IT"
+```
+
+**Features:**
+- Creates user in correct OU based on department
+- Sets temporary password with forced change at logon
+- Validates department input (IT, HR, Finance)
+
+### Get-ADReport.ps1
+
+Generates comprehensive AD report.
+
+```powershell
+.\Get-ADReport.ps1
+```
+
+**Output includes:**
+- All Organizational Units
+- All domain users with status
+- Security groups and memberships
+- Locked out accounts
+- Disabled accounts
+
+### Disable-OffboardUser.ps1
+
+Automates employee offboarding process.
+
+```powershell
+.\Disable-OffboardUser.ps1 -Username "john.doe"
+```
+
+**Actions performed:**
+1. Disables the account
+2. Removes from all security groups
+3. Moves to Disabled_Accounts OU
 
 ## 📸 Screenshots
 
 | Screenshot | Description |
 |------------|-------------|
-| [OU Structure](screenshots/01-OU.png) | Organizational Units |
+| [AD Users and Computers](screenshots/01-OU.png) | Full AD structure |
 | [User Accounts](screenshots/02-IT-users.png) | Created users |
 | [Security Groups](screenshots/03-Groups.png) | Security groups |
 | [Group Membership](screenshots/04-IT-admins-members.png) | Users in groups |
 | [GPO Console](screenshots/05-GPO.png) | Group Policy Management |
 | [Password Policy](screenshots/06-Password-GPO.png) | Password GPO settings |
-| [Control Panel GPO](screenshots/07-linkedGPO-HR.png) | Restriction GPO |
+| [Control Panel GPO](screenshots/11-ControlPanel-GPO.png) | Restriction GPO |
 
 ## 🛠️ Technologies Used
 
