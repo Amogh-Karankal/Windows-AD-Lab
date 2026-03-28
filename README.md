@@ -9,7 +9,7 @@ Hands-on Active Directory Domain Services (AD DS) lab built on Windows Server 20
 
 ## 🎯 Overview
 
-This project demonstrates core Active Directory administration skills including domain controller deployment, organizational unit design, user/group management, Group Policy implementation, and PowerShell automation for common IT tasks.
+This project demonstrates core Active Directory administration skills including domain controller deployment, organizational unit design, user/group management, Group Policy implementation, advanced GPO configurations, and PowerShell automation for common IT tasks.
 
 ### Skills Demonstrated
 
@@ -20,6 +20,10 @@ This project demonstrates core Active Directory administration skills including 
 - User account provisioning and management
 - Security group creation and membership management
 - Group Policy Objects (GPOs) for security enforcement
+- Fine-grained password policies (PSOs) for privileged accounts
+- GPO blocked inheritance and enforcement
+- Loopback policy processing (Replace mode)
+- WMI filtering for targeted GPO application
 - PowerShell scripting for AD automation
 - OU delegation for least-privilege administration
 - DNS Server configuration (integrated with AD)
@@ -54,7 +58,7 @@ This project demonstrates core Active Directory administration skills including 
 ```
 amoghlab.local (Domain)
 │
-├── IT (OU)
+├── IT (OU) ← Block Inheritance + Loopback Policy applied
 │   ├── John Smith (john.smith)
 │   └── Sarah Tech (sarah.tech)
 │
@@ -149,14 +153,108 @@ amoghlab.local (Domain)
 
 **Path:** Computer Configuration → Policies → Administrative Templates → System → Removable Storage Access
 
-This demonstrates defense-in-depth: domain-wide security baselines plus targeted restrictions for sensitive departments.
+### 6. Security Baseline Enforced (Domain-Wide, Enforced)
+
+**Linked to:** amoghlab.local with **Enforced** flag set
+
+This GPO is configured with enforcement, meaning it applies to all OUs including those with blocked inheritance. Used to demonstrate GPO precedence and enforcement behavior.
+
+| Setting | Value |
+|---------|-------|
+| All Removable Storage classes: Deny all access | Enabled |
+| WMI Filter | Filter-Windows-Server-2022 |
+
+## 🔒 Advanced GPO Configurations
+
+### Fine-Grained Password Policy (PSO)
+
+Standard domain password policies apply uniformly to all users. Fine-grained password policies (Password Settings Objects) allow different password rules for specific users or groups — a real-world requirement for privileged accounts.
+
+**PSO-Admins** — applied to `Domain Admins` group:
+
+| Setting | Value |
+|---------|-------|
+| Minimum password length | 16 characters |
+| Password history | 24 passwords |
+| Maximum password age | 60 days |
+| Lockout threshold | 3 attempts |
+| Lockout duration | 30 minutes |
+| Complexity | Enabled |
+| Reversible encryption | Disabled |
+| Precedence | 10 (overrides Default Domain Policy) |
+
+**Verified via PowerShell:**
+```powershell
+Get-ADFineGrainedPasswordPolicy -Identity "PSO-Admins"
+Get-ADUserResultantPasswordPolicy -Identity Administrator
+```
+`Get-ADUserResultantPasswordPolicy` confirms the Administrator account receives PSO-Admins settings instead of the Default Domain Policy — proof that fine-grained policy precedence is working correctly.
+
+---
+
+### GPO Blocked Inheritance + Enforcement
+
+**Blocked Inheritance** prevents an OU from inheriting GPOs linked at parent levels. **Enforcement** overrides blocked inheritance for critical policies — demonstrating how admins balance OU autonomy with mandatory security baselines.
+
+**Configuration:**
+- Block inheritance applied to: `IT` OU
+- `Security-Baseline-Enforced` GPO linked at domain root with **Enforced** flag
+
+**Verified via Group Policy Modeling:**
+
+GPMC Group Policy Modeling confirms: *"Inheritance is blocking all non-enforced GPOs linked above amoghlab.local/IT"* — proving the block is active while enforced GPOs still apply.
+
+---
+
+### Loopback Policy (Replace Mode)
+
+Normally, User Configuration settings apply based on where the **user account** lives in AD. Loopback policy changes this — it applies User Configuration based on where the **computer** is located. Used for shared workstations, kiosk machines, and RDS servers.
+
+**GPO:** `Loopback-IT-Policy` — linked to `IT` OU
+
+| Setting | Value |
+|---------|-------|
+| Loopback processing mode | Replace |
+| User Config: Control Panel access | Prohibited |
+
+**Replace mode** means only the computer OU's user settings apply — the user's own GPOs are completely replaced. This ensures consistent lockdown regardless of which user logs in.
+
+**Verified via Group Policy Modeling:**
+
+Modeling result for `sarah.tech` logging into `IT-WORKSTATION01` (IT OU):
+- `Loopback-IT-Policy` appears in Applied GPOs
+- Control Panel prohibition shown as active under User Details → Settings → Winning GPO: `Loopback-IT-Policy`
+
+---
+
+### WMI Filtering
+
+WMI filters allow conditional GPO application based on a machine's properties (OS version, hardware specs, etc.). The GPO only applies if the WMI query returns true — preventing misapplication across mixed OS environments.
+
+**Filter:** `Filter-Windows-Server-2022`
+
+```sql
+SELECT * FROM Win32_OperatingSystem WHERE Caption LIKE "%Windows Server 2022%"
+```
+
+**Linked to:** `Security-Baseline-Enforced` GPO
+
+**Verified via PowerShell:**
+```powershell
+# Confirms WMI filter is linked to the GPO
+Get-GPO -Name "Security-Baseline-Enforced" | Select-Object DisplayName, WmiFilter
+
+# Confirms this machine matches the filter (will evaluate to true)
+Get-WmiObject Win32_OperatingSystem | Select-Object Caption
+# Output: Microsoft Windows Server 2022 Standard
+```
 
 ## 🔐 OU Delegation
 
 Implemented least-privilege administration:
 
 | OU | Delegated To | Permission |
-|----|--------------|------------|
+|----|-------------|------------|
 | IT | HR_Staff | Reset user passwords |
 
 This allows helpdesk staff to reset passwords without full admin rights — a real-world security best practice.
@@ -191,8 +289,17 @@ This allows helpdesk staff to reset passwords without full admin rights — a re
 3. Created Audit Policy GPO (domain-wide)
 4. Created Restrict Control Panel GPO (HR OU)
 5. Created Block USB Storage GPO (Finance OU)
+6. Created Security-Baseline-Enforced GPO with WMI filter
 
-### Phase 5: Delegation & Automation
+### Phase 5: Advanced GPO Configurations
+
+1. Created PSO-Admins fine-grained password policy for Domain Admins
+2. Applied blocked inheritance to IT OU
+3. Configured Security-Baseline-Enforced with Enforced flag at domain root
+4. Created Loopback-IT-Policy in Replace mode linked to IT OU
+5. Created WMI filter for Windows Server 2022 and linked to Security-Baseline-Enforced
+
+### Phase 6: Delegation & Automation
 
 1. Delegated password reset to HR_Staff for IT OU
 2. Created PowerShell scripts for AD automation
@@ -251,6 +358,10 @@ Automates employee offboarding process.
 | [GPO Console](screenshots/05-GPO.png) | Group Policy Management |
 | [Password Policy](screenshots/06-Password-GPO.png) | Password GPO settings |
 | [Control Panel GPO](screenshots/11-ControlPanel-GPO.png) | Restriction GPO |
+| [PSO Verification](screenshots/12-PSO-Admins.png) | Fine-grained password policy output |
+| [Blocked Inheritance](screenshots/13-blocked-inheritance.png) | IT OU with inheritance blocked (GPMC modeling) |
+| [Loopback Policy](screenshots/14-loopback-policy.png) | Loopback Replace mode — Winning GPO confirmed |
+| [WMI Filter](screenshots/15-WMI-Filter.png) | WMI filter linked to GPO + OS verification |
 
 ## 🛠️ Technologies Used
 
@@ -276,6 +387,14 @@ Automates employee offboarding process.
 - Centralized configuration management
 - Can be linked at domain, site, or OU level
 - Inheritance flows down the AD hierarchy
+- Enforcement overrides blocked inheritance for critical policies
+
+### Advanced GPO Concepts
+- **Fine-grained password policies** — per-group password rules using PSOs
+- **Blocked inheritance** — OU-level isolation from parent GPOs
+- **Enforcement** — mandatory policies that override inheritance blocks
+- **Loopback processing** — computer-based user policy application
+- **WMI filtering** — conditional GPO application based on machine properties
 
 ## 🔧 Common AD Administration Tasks
 
@@ -295,17 +414,22 @@ New-ADUser -Name "New User" -SamAccountName "new.user" -Path "OU=IT,DC=amoghlab,
 # Add user to group
 Add-ADGroupMember -Identity "VPN_Users" -Members "new.user"
 
+# Check resultant password policy for a user
+Get-ADUserResultantPasswordPolicy -Identity Administrator
+
 # Force Group Policy update
 gpupdate /force
+
+# Generate GPO report
+gpresult /r
 ```
 
 ## 📈 Future Enhancements
 
-- [ ] Add second Domain Controller for redundancy
-- [ ] Implement DHCP Server role
-- [ ] Configure additional GPOs (drive mappings, logon scripts)
-- [ ] Set up fine-grained password policies
-- [ ] Implement OU delegation
+- Add second Domain Controller for redundancy
+- Implement DHCP Server role
+- Configure drive mappings and logon scripts via GPO
+- CIS security hardening baseline
 
 ## 👤 Author
 
